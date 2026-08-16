@@ -16,12 +16,23 @@ passport.use(
         const email = profile.emails?.[0]?.value?.toLowerCase();
         if (!email) return done(null, false, { message: "No email found" });
 
-        // Verify the user against the FastAPI backend (same logic as next-auth signIn callback)
+        // Verify the user against the FastAPI backend
+        console.log(`Verifying email ${email} against FastAPI at ${FASTAPI_URL}`);
         const res = await fetch(`${FASTAPI_URL}/api/auth/verify?email=${encodeURIComponent(email)}`);
-        if (!res.ok) return done(null, false, { message: "Backend verification failed" });
+        
+        if (!res.ok) {
+          const text = await res.text();
+          console.error(`Backend verification failed with status ${res.status}:`, text);
+          return done(null, false, { message: "Backend verification failed" });
+        }
 
         const data = await res.json();
-        if (!data.allowed) return done(null, false, { message: "AccessDenied" });
+        console.log("Verification response from backend:", data);
+        
+        if (!data.allowed) {
+          console.error("User explicitly denied access by backend.");
+          return done(null, false, { message: "AccessDenied" });
+        }
 
         const user = {
           email,
@@ -32,6 +43,7 @@ passport.use(
 
         return done(null, user);
       } catch (err) {
+        console.error("Network or internal error during passport verification:", err);
         return done(err, null);
       }
     }
