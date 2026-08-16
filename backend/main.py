@@ -29,14 +29,14 @@ async def lifespan(app: FastAPI):
     try:
         if db.users.count_documents({}) == 0:
             import os
-            allowed_emails_str = os.getenv("ALLOWED_EMAILS")
-            if allowed_emails_str:
-                emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
-                for e in emails:
-                    db.users.insert_one({"email": e, "role": "admin", "created_at": datetime.datetime.utcnow().isoformat()})
-                logger.info(f"Bootstrapped {len(emails)} admins from environment variables.")
-            else:
-                logger.warning("Database is empty but ALLOWED_EMAILS is not set. No admin users were bootstrapped.")
+            # Fallback to defaults if the environment variable isn't set
+            default_emails = "venkatamastan.mudigonda@gmail.com,sravyavaranasi2005@gmail.com"
+            allowed_emails_str = os.getenv("ALLOWED_EMAILS", default_emails)
+            
+            emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
+            for e in emails:
+                db.users.insert_one({"email": e, "role": "admin", "created_at": datetime.datetime.utcnow().isoformat()})
+            logger.info(f"Bootstrapped {len(emails)} admins: {', '.join(emails)}")
     except Exception as e:
         logger.error(f"Error bootstrapping admins: {e}")
 
