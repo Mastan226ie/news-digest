@@ -25,6 +25,10 @@ app.use(
 
 app.use(express.json());
 
+// ─── Trust Proxy for Secure Cookies on Render ─────────────────────────────────
+// Required for secure: true session cookies to be set when behind a load balancer
+app.set("trust proxy", 1);
+
 // ─── Session ──────────────────────────────────────────────────────────────────
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || "dev-secret-change-in-production",
