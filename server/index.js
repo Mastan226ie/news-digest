@@ -4,7 +4,7 @@ const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
 const cors = require("cors");
-const MongoStore = require("connect-mongo");
+const { MongoStore } = require("connect-mongo");
 const { createProxyMiddleware, fixRequestBody } = require("http-proxy-middleware");
 
 // --- Passport Strategy ---
