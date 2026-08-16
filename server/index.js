@@ -84,8 +84,7 @@ app.use("/api/auth", require("./routes/auth"));
 
 // ─── Proxy all other /api/* requests to Python FastAPI backend ────────────────
 app.use(
-  "/api",
-  createProxyMiddleware({
+  createProxyMiddleware("/api", {
     target: FASTAPI_URL,
     changeOrigin: true,
     on: {
