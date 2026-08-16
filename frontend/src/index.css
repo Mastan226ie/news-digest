@@ -1,0 +1,78 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap");
+
+:root {
+  --theme-bg: #F9F7F1;
+  --theme-fg: #1C1917;
+  --theme-border: #E7E3D4;
+  --theme-muted: #7A7265;
+  --theme-accent: #1C1917;
+  --theme-accent-hover: #E7E3D4;
+  --theme-card-bg: #FAF9F5;
+  --theme-selection-bg: #E8E3D3;
+}
+
+[data-theme="sage"] {
+  --theme-bg: #F2F5F0;
+  --theme-fg: #1B2A1C;
+  --theme-border: #DEE4DB;
+  --theme-muted: #6C7B6B;
+  --theme-accent: #1B2A1C;
+  --theme-accent-hover: #DEE4DB;
+  --theme-card-bg: #F8FAF7;
+  --theme-selection-bg: #DEE4DB;
+}
+
+[data-theme="alabaster"] {
+  --theme-bg: #F5F3EE;
+  --theme-fg: #2C2520;
+  --theme-border: #E6E1D8;
+  --theme-muted: #8C827A;
+  --theme-accent: #2C2520;
+  --theme-accent-hover: #E6E1D8;
+  --theme-card-bg: #FAF9F6;
+  --theme-selection-bg: #E6E1D8;
+}
+
+[data-theme="dark"] {
+  --theme-bg: #0D0D0C;
+  --theme-fg: #E8E6E3;
+  --theme-border: #2C2A26;
+  --theme-muted: #9A9182;
+  --theme-accent: #E8E6E3;
+  --theme-accent-hover: #2C2A26;
+  --theme-card-bg: #121211;
+  --theme-selection-bg: #3E3A35;
+}
+
+@theme inline {
+  --color-theme-bg: var(--theme-bg);
+  --color-theme-fg: var(--theme-fg);
+  --color-theme-border: var(--theme-border);
+  --color-theme-muted: var(--theme-muted);
+  --color-theme-accent: var(--theme-accent);
+  --color-theme-accent-hover: var(--theme-accent-hover);
+  --color-theme-card-bg: var(--theme-card-bg);
+  --color-theme-selection-bg: var(--theme-selection-bg);
+
+  --font-sans: "Geist", Arial, Helvetica, sans-serif;
+  --font-mono: "Geist Mono", monospace;
+}
+
+body {
+  background: var(--theme-bg);
+  color: var(--theme-fg);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s ease;
+}
+
+@keyframes loginFadeIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.login-fade-in {
+  animation: loginFadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

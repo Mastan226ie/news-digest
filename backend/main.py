@@ -2,12 +2,12 @@ import logging
 import datetime
 from typing import Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, BackgroundTasks
+from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import schemas, services
-from database import get_db
+from database import get_db, init_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,6 +16,9 @@ scheduler = BackgroundScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Verify DB connectivity now that the server has started (lazy connection fix)
+    init_db()
+
     # Run every 60 minutes to preserve Gemini daily quota limits
     scheduler.add_job(fetch_and_store_news, 'interval', minutes=60)
     scheduler.start()
@@ -41,7 +44,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Sraman's News Digest API", lifespan=lifespan)
 
-import os
 raw_origins = os.getenv("ALLOWED_ORIGINS", "https://sraman-news-digest.vercel.app,http://localhost:3000")
 ALLOWED_ORIGINS = []
 for origin in raw_origins.split(","):
@@ -51,11 +53,11 @@ for origin in raw_origins.split(","):
         if o.endswith("/"):
             ALLOWED_ORIGINS.append(o[:-1])
 
-# CORS Configuration - Bulletproof wildcard setup
+# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -271,7 +273,6 @@ def mark_article_read(req: schemas.MarkReadRequest, db = Depends(get_db)):
 @app.get("/api/auth/verify")
 def verify_user(email: str, db = Depends(get_db)):
     if not email:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Email required")
         
     user = db.users.find_one({"email": email})
@@ -282,11 +283,9 @@ def verify_user(email: str, db = Depends(get_db)):
 
 def _verify_admin(admin_email: str, db):
     if not admin_email:
-        from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="Unauthorized")
     admin_user = db.users.find_one({"email": admin_email})
     if not admin_user or admin_user.get("role") != "admin":
-        from fastapi import HTTPException
         raise HTTPException(status_code=403, detail="Forbidden")
 
 @app.get("/api/admin/users", response_model=list[schemas.UserResponse])
@@ -306,7 +305,6 @@ def add_user(req: schemas.AddUserRequest, db = Depends(get_db)):
     _verify_admin(req.admin_email, db)
     
     if db.users.find_one({"email": req.email}):
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="User already exists")
         
     db.users.insert_one({
@@ -322,7 +320,6 @@ def update_user_role(email: str, req: schemas.UpdateRoleRequest, db = Depends(ge
     
     res = db.users.update_one({"email": email}, {"$set": {"role": req.role}})
     if res.matched_count == 0:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="User not found")
         
     return {"status": "success", "message": f"Updated {email} role to {req.role}"}
@@ -332,22 +329,21 @@ def delete_user(email: str, admin_email: str, db = Depends(get_db)):
     _verify_admin(admin_email, db)
     
     if email == admin_email:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
         
     res = db.users.delete_one({"email": email})
     if res.deleted_count == 0:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="User not found")
         
     return {"status": "success", "message": f"Removed {email}"}
 
 @app.delete("/api/admin/reset-database")
-async def reset_database():
-    """DANGER: Completely clears the database for deployment prep."""
+def reset_database(admin_email: str, db = Depends(get_db)):
+    """DANGER: Completely clears the database. Requires admin privileges."""
+    _verify_admin(admin_email, db)
     db.users.drop()
     db.news_articles.drop()
-    db.attempted_urls.drop()
+    db.processed_urls.drop()
     return {"message": "Database completely reset to initial state"}
 
 if __name__ == "__main__":

@@ -109,7 +109,7 @@ def process_news_with_gemini(raw_news_data: list) -> ArticleList:
         Raw news data:
         {batch}
         """
-        models_to_try = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash']
+        models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
         max_retries = 3
         
         for attempt in range(max_retries):
