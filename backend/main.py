@@ -24,22 +24,25 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(fetch_and_store_news, 'interval', minutes=60)
     scheduler.start()
     
-    # Bootstrap initial admins (always ensure these emails have admin access)
+    # Production-level admin bootstrap
     from database import db
     try:
         import os
-        # Fallback to defaults if the environment variable isn't set
-        default_emails = "venkatamastan.mudigonda@gmail.com,sravyavaranasi2005@gmail.com"
-        allowed_emails_str = os.getenv("ALLOWED_EMAILS", default_emails)
+        # In production, admin emails must never be hardcoded in source control.
+        # They must be provided securely via the ALLOWED_EMAILS environment variable.
+        allowed_emails_str = os.getenv("ALLOWED_EMAILS")
         
-        emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
-        for e in emails:
-            db.users.update_one(
-                {"email": e},
-                {"$set": {"role": "admin"}, "$setOnInsert": {"created_at": datetime.datetime.utcnow().isoformat()}},
-                upsert=True
-            )
-        logger.info(f"Verified {len(emails)} admins: {', '.join(emails)}")
+        if allowed_emails_str:
+            emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
+            for e in emails:
+                db.users.update_one(
+                    {"email": e},
+                    {"$set": {"role": "admin"}, "$setOnInsert": {"created_at": datetime.datetime.utcnow().isoformat()}},
+                    upsert=True
+                )
+            logger.info(f"Verified {len(emails)} admins from environment variables.")
+        else:
+            logger.warning("No ALLOWED_EMAILS environment variable found. Skipping admin bootstrap.")
     except Exception as e:
         logger.error(f"Error bootstrapping admins: {e}")
 
