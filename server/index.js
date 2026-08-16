@@ -42,20 +42,25 @@ const mongoose = require("mongoose");
 
 // Use MongoDB for session storage if MONGODB_URL is set
 if (process.env.MONGODB_URL) {
-  // Use mongoose to connect gracefully without crashing on Render's slow DNS
-  const clientPromise = mongoose
-    .connect(process.env.MONGODB_URL, {
-      serverSelectionTimeoutMS: 5000,
-    })
-    .then((m) => m.connection.getClient())
-    .catch((err) => {
-      console.error("⚠️ MongoDB connection error at startup:", err.message);
-      // We return the promise anyway so connect-mongo doesn't completely break, 
-      // but we catch the error to prevent the Node process from exiting.
-    });
+  // Use a retry loop so that if Render's DNS fails on boot, the promise remains pending
+  // instead of rejecting. This prevents connect-mongo from crashing.
+  const connectWithRetry = async () => {
+    while (true) {
+      try {
+        const m = await mongoose.connect(process.env.MONGODB_URL, {
+          serverSelectionTimeoutMS: 5000,
+        });
+        console.log("🔌 Successfully connected to MongoDB for sessions");
+        return m.connection.getClient();
+      } catch (err) {
+        console.error("⚠️ MongoDB connection error, retrying in 2 seconds:", err.message);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  };
 
   sessionConfig.store = MongoStore.create({
-    clientPromise: clientPromise,
+    clientPromise: connectWithRetry(),
     dbName: process.env.MONGODB_DB_NAME || "news_digest",
     collectionName: "sessions",
     ttl: 7 * 24 * 60 * 60,
