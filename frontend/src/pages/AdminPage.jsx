@@ -13,6 +13,16 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState("user");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const showError = (msg) => {
+    setError(msg);
+    setTimeout(() => setError(null), 6000);
+  };
+  const showSuccess = (msg) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(null), 5000);
+  };
 
   const fetchUsers = useCallback(async () => {
     if (!user?.email || user?.role !== "admin") return;
@@ -38,6 +48,7 @@ export default function AdminPage() {
     e.preventDefault();
     setError(null); setSuccess(null);
     if (!newEmail.trim() || !user?.email) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${SERVER_URL}/api/admin/users`, {
         method: "POST",
@@ -47,11 +58,13 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to add user");
-      setSuccess(data.message);
+      showSuccess(data.message || `Successfully granted access to ${newEmail.trim().toLowerCase()}`);
       setNewEmail("");
       fetchUsers();
     } catch (err) {
-      setError(err.message || "Failed to add user");
+      showError(err.message || "Failed to add user");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -66,10 +79,10 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to update role");
-      setSuccess(data.message);
+      showSuccess(data.message);
       fetchUsers();
     } catch (err) {
-      setError(err.message || "Failed to update role");
+      showError(err.message || "Failed to update role");
     }
   };
 
@@ -83,10 +96,10 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to delete user");
-      setSuccess(data.message);
+      showSuccess(data.message);
       fetchUsers();
     } catch (err) {
-      setError(err.message || "Failed to delete user");
+      showError(err.message || "Failed to delete user");
     }
   };
 
@@ -188,8 +201,17 @@ export default function AdminPage() {
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                <button type="submit" className="w-full py-3 bg-theme-accent text-theme-bg font-bold text-sm uppercase tracking-widest rounded-xl transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-                  Grant Access
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-theme-accent text-theme-bg font-bold text-sm uppercase tracking-widest rounded-xl transition-transform hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-theme-bg/40 border-t-theme-bg rounded-full animate-spin" />
+                      Adding...
+                    </>
+                  ) : "Grant Access"}
                 </button>
               </form>
             </div>
