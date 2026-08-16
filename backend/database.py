@@ -18,16 +18,38 @@ if "<username>" in MONGODB_URL:
 # Lazy connection proxy to prevent Render DNS crashes during Uvicorn startup
 class DatabaseProxy:
     def __init__(self):
-        self._client = None
         self._db = None
+        self._client = None
 
     def _init_db(self):
-        if self._client is None:
-            self._client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
-            self._db = self._client[MONGODB_DB_NAME]
+        if self._db is None:
+            if not MONGODB_URL:
+                logger.warning("MONGODB_URL is not set. Database operations will fail.")
+                return
+            import time
+            from pymongo.errors import ConfigurationError
+            # Render's DNS often fails on the first few attempts. We must retry the SRV resolution.
+            retries = 5
+            for attempt in range(retries):
+                try:
+                    self._client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+                    # Force a ping to ensure the connection and DNS actually worked
+                    self._client.admin.command('ping')
+                    self._db = self._client[MONGODB_DB_NAME]
+                    logger.info("🔌 Successfully connected to MongoDB via DatabaseProxy!")
+                    break
+                except Exception as e:
+                    logger.error(f"⚠️ MongoDB DNS/Connection error on attempt {attempt+1}/{retries}: {e}")
+                    if attempt < retries - 1:
+                        time.sleep(2)
+                    else:
+                        logger.error("❌ Failed to connect to MongoDB after multiple retries. Raising error.")
+                        raise
 
     def __getattr__(self, name):
         self._init_db()
+        if self._db is None:
+            raise Exception("Database is not initialized. Check MONGODB_URL.")
         return getattr(self._db, name)
         
     def __getitem__(self, name):
