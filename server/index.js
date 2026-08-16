@@ -40,16 +40,16 @@ const sessionConfig = {
 
 const mongoose = require("mongoose");
 
-// Use MongoDB for session storage if MONGODB_URL is set
+// Use in-memory session store to completely bypass the Render MongoDB DNS SRV bugs.
+// (Render free tier runs a single instance anyway, so MemoryStore is perfectly fine for now).
+/*
 if (process.env.MONGODB_URL) {
-  // Use a retry loop so that if Render's DNS fails on boot, the promise remains pending
-  // instead of rejecting. This prevents connect-mongo from crashing.
   const connectWithRetry = async () => {
     while (true) {
       try {
         const m = await mongoose.connect(process.env.MONGODB_URL, {
           serverSelectionTimeoutMS: 5000,
-          family: 4, // Force IPv4 to bypass Render's IPv6 DNS resolution bugs
+          family: 4, 
         });
         console.log("🔌 Successfully connected to MongoDB for sessions");
         return m.connection.getClient();
@@ -67,6 +67,7 @@ if (process.env.MONGODB_URL) {
     ttl: 7 * 24 * 60 * 60,
   });
 }
+*/
 
 app.use(session(sessionConfig));
 
