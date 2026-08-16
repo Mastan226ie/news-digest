@@ -24,19 +24,22 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(fetch_and_store_news, 'interval', minutes=60)
     scheduler.start()
     
-    # Bootstrap initial admins if DB is empty
+    # Bootstrap initial admins (always ensure these emails have admin access)
     from database import db
     try:
-        if db.users.count_documents({}) == 0:
-            import os
-            # Fallback to defaults if the environment variable isn't set
-            default_emails = "venkatamastan.mudigonda@gmail.com,sravyavaranasi2005@gmail.com"
-            allowed_emails_str = os.getenv("ALLOWED_EMAILS", default_emails)
-            
-            emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
-            for e in emails:
-                db.users.insert_one({"email": e, "role": "admin", "created_at": datetime.datetime.utcnow().isoformat()})
-            logger.info(f"Bootstrapped {len(emails)} admins: {', '.join(emails)}")
+        import os
+        # Fallback to defaults if the environment variable isn't set
+        default_emails = "venkatamastan.mudigonda@gmail.com,sravyavaranasi2005@gmail.com"
+        allowed_emails_str = os.getenv("ALLOWED_EMAILS", default_emails)
+        
+        emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
+        for e in emails:
+            db.users.update_one(
+                {"email": e},
+                {"$set": {"role": "admin"}, "$setOnInsert": {"created_at": datetime.datetime.utcnow().isoformat()}},
+                upsert=True
+            )
+        logger.info(f"Verified {len(emails)} admins: {', '.join(emails)}")
     except Exception as e:
         logger.error(f"Error bootstrapping admins: {e}")
 
