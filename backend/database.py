@@ -15,12 +15,26 @@ if not MONGODB_URL:
 if "<username>" in MONGODB_URL:
     raise ValueError("MONGODB_URL contains a placeholder '<username>'. Please configure your actual Atlas URI in backend/.env")
 
-# Lazy connection: create the client but DON'T call server_info() at import time.
-# This lets the FastAPI/uvicorn server start up and bind its port successfully even
-# if the Atlas DNS resolves slowly (common cold-start on Render free tier).
-# The actual TCP connection is established on the first real operation.
-client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
-db = client[MONGODB_DB_NAME]
+# Lazy connection proxy to prevent Render DNS crashes during Uvicorn startup
+class DatabaseProxy:
+    def __init__(self):
+        self._client = None
+        self._db = None
+
+    def _init_db(self):
+        if self._client is None:
+            self._client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+            self._db = self._client[MONGODB_DB_NAME]
+
+    def __getattr__(self, name):
+        self._init_db()
+        return getattr(self._db, name)
+        
+    def __getitem__(self, name):
+        self._init_db()
+        return self._db[name]
+
+db = DatabaseProxy()
 
 def init_db():
     """
@@ -28,7 +42,8 @@ def init_db():
     connectivity and create indexes. Errors here are logged but don't crash the server.
     """
     try:
-        client.server_info()
+        db._init_db()
+        db._client.server_info()
         logger.info(f"🔌 Successfully connected to MongoDB database: '{MONGODB_DB_NAME}'")
 
         db.news_articles.create_index([("published_date", -1)])
