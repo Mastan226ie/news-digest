@@ -3,7 +3,19 @@ import logging
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# --- DNS FIX FOR RENDER ---
+# Render's internal DNS resolver is completely broken for MongoDB SRV records.
+# We force dnspython (used by pymongo) to use Google's public DNS (8.8.8.8) instead.
+try:
+    import dns.resolver
+    dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+    dns.resolver.default_resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+except ImportError:
+    pass
 
 load_dotenv()
 
