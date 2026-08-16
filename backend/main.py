@@ -283,7 +283,23 @@ def verify_user(email: str, db = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email required")
         
     user = db.users.find_one({"email": email})
+    
     if not user:
+        # Dynamic Bootstrap: Render's slow DNS might cause the startup script to fail.
+        # If the user isn't in the DB yet, check if they belong in ALLOWED_EMAILS right now.
+        import os
+        import datetime
+        allowed_emails_str = os.getenv("ALLOWED_EMAILS", "")
+        allowed_emails = [e.strip().lower() for e in allowed_emails_str.split(",") if e.strip()]
+        
+        if email.lower() in allowed_emails:
+            db.users.insert_one({
+                "email": email.lower(),
+                "role": "admin",
+                "created_at": datetime.datetime.utcnow().isoformat()
+            })
+            return {"allowed": True, "role": "admin"}
+            
         return {"allowed": False, "role": None}
         
     return {"allowed": True, "role": user.get("role", "user")}
