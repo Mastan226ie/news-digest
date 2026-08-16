@@ -49,6 +49,7 @@ if (process.env.MONGODB_URL) {
       try {
         const m = await mongoose.connect(process.env.MONGODB_URL, {
           serverSelectionTimeoutMS: 5000,
+          family: 4, // Force IPv4 to bypass Render's IPv6 DNS resolution bugs
         });
         console.log("🔌 Successfully connected to MongoDB for sessions");
         return m.connection.getClient();
