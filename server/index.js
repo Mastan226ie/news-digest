@@ -5,7 +5,7 @@ const session = require("express-session");
 const passport = require("passport");
 const cors = require("cors");
 const MongoStore = require("connect-mongo");
-const { createProxyMiddleware } = require("http-proxy-middleware");
+const { createProxyMiddleware, fixRequestBody } = require("http-proxy-middleware");
 
 // --- Passport Strategy ---
 require("./config/passport");
@@ -103,6 +103,7 @@ app.use(
     target: FASTAPI_URL.replace(/\/$/, ""),
     changeOrigin: true,
     on: {
+      proxyReq: fixRequestBody,
       error: (err, req, res) => {
         console.error("[Proxy Error]", err.message);
         res.status(502).json({ error: "Backend service unavailable" });
