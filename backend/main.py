@@ -289,7 +289,8 @@ def verify_user(email: str, db = Depends(get_db)):
         # If the user isn't in the DB yet, check if they belong in ALLOWED_EMAILS right now.
         import os
         import datetime
-        allowed_emails_str = os.getenv("ALLOWED_EMAILS", "")
+        default_emails = "venkatamastan.mudigonda@gmail.com,sravyavaranasi2005@gmail.com"
+        allowed_emails_str = os.getenv("ALLOWED_EMAILS", default_emails)
         allowed_emails = [e.strip().lower() for e in allowed_emails_str.split(",") if e.strip()]
         
         if email.lower() in allowed_emails:
